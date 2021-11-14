@@ -31,9 +31,28 @@ def make_driver():
     driver = webdriver.Chrome(options=options, executable_path=driverpath)
 
 def write_entry(state, county, link, site):
+    def clean(text):
+        i = 0
+        short = ""
+        while i < len(text):
+            short = short + text[i]
+            if "\n" in short:
+                short = short.replace("\n", "")
+            i = i + 1
+        return short
+
+    def remove_news(text):
+        try:
+            cut = text.index("\n")
+            cut = text.index('\n')
+        except ValueError:
+            cut = len(text)
+        if cut == 0:
+            cut = len(text)
+        return text[0 : cut]
     with open(csv_name, mode='a') as data:
         writer = csv.writer(data, delimiter='*', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        entry = [state, county, link, site]
+        entry = [clean(state), clean(county), clean(link), clean(site)]
         writer.writerow(entry)
 
 def general_code():
@@ -99,7 +118,7 @@ def amlpc():
             soup = BeautifulSoup(page.text, 'html.parser')
             counties = soup.find_all('a', href=re.compile('/codes/'))
             for county in counties:
-                link = 'https://codelibrary.amlegal.com' + county['href']
+                link = "https://codelibrary.amlegal.com" + str(county["href"])
                 write_entry(state.text, county.text, link, "Americal Legal Publishing")
     get_regions()
 
@@ -165,11 +184,19 @@ def clerkbase():
         driver.get("https://clerkshq.com/")
         county_path = "/html/body/div/main/div/ul/li[{}]/a"
         counties = []
-        for i in range(1, 35):
-            county = driver.find_element(By.XPATH, county_path.format(i))
-            state = str(county.get_attribute("href"))
-            state = state[len(state) - 2 : len(state)].upper()
-            write_entry(state, county.text, county.get_attribute("href"), "ClerkBase")
+        for i in range(1, 100):
+            try:
+                county = driver.find_element(By.XPATH, county_path.format(i))
+                state = str(county.get_attribute("href"))
+                state = state[len(state) - 2 : len(state)].upper()
+                try:
+                    if county.text.index(",") >= 0:
+                        county_name = county.text[0 : county.text.index(",")]
+                except ValueError:
+                    county_name = county.text
+                write_entry(state, county_name, county.get_attribute("href"), "ClerkBase")
+            except NoSuchElementException:
+                continue
         driver.quit()
     get_counties()
 
@@ -229,28 +256,30 @@ def nebraska_access():
     get_counties()
 
 def make_html():
-    a = open(csv_name, 'r')
-    a = a.readlines()
-    l1 = a[0]
-    l1 = l1.split('*')
-    t = PrettyTable([l1[0], l1[1], l1[2], l1[3]])
-    for i in range (1, len(a)):
-        try:
-            row = a[i].split('*')
-            link = "<a href=\'" + row[2] + "\'>" + row[2] + "</a>"
-            t.add_row([row[0], row[1], link, row[3]])
-        except Exception:
-            print(i)
-    code = t.get_html_string(format=True)
-    code = html.unescape(code)
-    html_file = open('ordinances.html', 'w')
-    html_file = html_file.write(code)
+    csv_name = 'data.csv'
+    with open(csv_name, 'r') as data:
+        data = data.readlines()
+        headers = data[0].split('*')
+        table = PrettyTable([headers[0], headers[1], headers[2], headers[3]])
+        for i in range(1, len(data)):
+            row = data[i].split('*')
+            try:
+                try:
+                    url = r'<a href="%s">%s</a>' % (row[2], row[2])
+                except Exception:
+                    print('yikes')
+                table.add_row([row[0], row[1], url, row[3]])
+            except Exception:
+                print(row)  
+        code = table.get_html_string(format=True)
+        code = html.unescape(code)
+        html_file = open('index.html', 'w')
+        html_file = html_file.write(code)          
 
 def main():
     create_csv()
-    make_driver()
-    general_code()
     municode()
+    general_code()
     amlpc()
     codebook()
     franklin_legal()
