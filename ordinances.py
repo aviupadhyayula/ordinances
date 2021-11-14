@@ -274,25 +274,25 @@ def make_html():
         code = table.get_html_string(format=True)
         code = html.unescape(code)
         html_file = open('index.html', 'w')
-        html_file = html_file.write(code)          
+        html_file = html_file.write(code)  
+
+def scrape():
+    municode()
+    general_code()
+    amlpc()
+    codebook()
+    franklin_legal()
+    mtas()
+    quality_code()
+    ranson()
+    clerkbase()
+    drake()
+    nebraska_access()        
 
 def main():
-    # create_csv()
-    # municode()
-    # general_code()
-    # amlpc()
-    # codebook()
-    # franklin_legal()
-    # mtas()
-    # quality_code()
-    # ranson()
-    # clerkbase()
-    # drake()
-    # nebraska_access()
-    # make_html()
-    with open('data.csv', 'r') as data:
-        data = data.readlines()
-        print(len(data))
+    create_csv()
+    scrape()
+    make_html()
 
 if __name__ == '__main__':
     main()
